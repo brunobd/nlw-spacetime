@@ -18,7 +18,16 @@ import NLWLogo from './src/assets/nlw-spacetime-logo.svg'
 
 import { BaiJamjuree_700Bold } from '@expo-google-fonts/bai-jamjuree'
 import { styled } from 'nativewind'
+import { useEffect } from 'react'
+import { makeRedirectUri, useAuthRequest } from 'expo-auth-session'
+import { api } from './src/lib/api'
 const StyledStripes = styled(Stripes)
+const discovery = {
+  authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+  tokenEndpoint: 'https://github.com/login/oauth/access_token',
+  revocationEndpoint:
+    'https://github.com/settings/connections/applications/05edd92385b30eeec05d',
+}
 export default function App() {
   const [hasLoadedFonts] = useFonts({
     Roboto_400Regular,
@@ -26,10 +35,28 @@ export default function App() {
     BaiJamjuree_700Bold,
   })
 
-  if (!hasLoadedFonts) {
-    return null
-  }
+  const [request, response, signInWithGithub] = useAuthRequest(
+    {
+      clientId: '05edd92385b30eeec05d',
+      scopes: ['identity'],
+      redirectUri: makeRedirectUri({
+        scheme: 'nlwspacetime',
+      }),
+    },
+    discovery,
+  )
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { code } = response.params
 
+      api.post('/register', { code }).then((response) => {
+        const { token } = response.data
+        console.log(token)
+      })
+    }
+  }, [response])
+
+  if (!hasLoadedFonts) return null
   return (
     <ImageBackground
       source={blurBg}
@@ -40,24 +67,25 @@ export default function App() {
       <View className="flex-1 items-center justify-center gap-6">
         <NLWLogo />
         <View className="space-y-2">
-          <Text className="font-title text-center text-2xl leading-tight text-gray-50">
+          <Text className="text-center font-title text-2xl leading-tight text-gray-50">
             Sua cápsula do tempo
           </Text>
-          <Text className="font-body text-center text-base leading-relaxed text-gray-100">
+          <Text className="text-center font-body text-base leading-relaxed text-gray-100">
             Colecione momentos marcantes da sua jornada e compartilhe com o
             mundo!
           </Text>
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
-          className="rounded-full bg-green-500 px-5 py-10"
+          className="rounded-full bg-green-500 px-5 py-2"
+          onPress={() => signInWithGithub()}
         >
           <Text className="font-alt text-sm uppercase text-black">
             Cadastrar lembrança
           </Text>
         </TouchableOpacity>
       </View>
-      <Text className="font-body text-center text-sm leading-relaxed text-gray-200">
+      <Text className="text-center font-body text-sm leading-relaxed text-gray-200">
         Feito com 💜 no NLW da Rocketseat
       </Text>
       <StatusBar style="light" translucent />
